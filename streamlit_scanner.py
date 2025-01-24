@@ -3,9 +3,6 @@ from PIL import Image
 import numpy as np
 from pyzbar.pyzbar import decode
 import json
-import av
-import cv2
-from streamlit_webrtc import webrtc_streamer, VideoProcessorBase
 
 st.set_page_config(
     page_title="Carbon Footprint Scanner",
@@ -13,49 +10,7 @@ st.set_page_config(
     layout="wide"
 )
 
-class QRCodeProcessor(VideoProcessorBase):
-    def __init__(self):
-        self.qr_data = None
-        self.last_detection = None
-
-    def recv(self, frame):
-        img = frame.to_ndarray(format="bgr24")
-        
-        # Process the frame for QR codes
-        try:
-            decoded_objects = decode(img)
-            if decoded_objects:
-                for obj in decoded_objects:
-                    try:
-                        # Draw rectangle around QR code
-                        points = obj.polygon
-                        if len(points) > 4:
-                            hull = cv2.convexHull(np.array([point for point in points], dtype=np.float32))
-                            cv2.polylines(img, [hull], True, (0, 255, 0), 3)
-                        else:
-                            points = np.array(points, dtype=np.int32)
-                            cv2.polylines(img, [points], True, (0, 255, 0), 3)
-                        
-                        # Try to decode QR data
-                        data = json.loads(obj.data.decode('utf-8'))
-                        if data != self.last_detection:  # Only update if new QR code
-                            self.qr_data = data
-                            self.last_detection = data
-                            
-                        # Add text overlay
-                        cv2.putText(img, "QR Code Detected!", 
-                                  (points[0][0], points[0][1] - 10),
-                                  cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
-                            
-                    except json.JSONDecodeError:
-                        pass
-                        
-        except Exception as e:
-            pass
-
-        return av.VideoFrame.from_ndarray(img, format="bgr24")
-
-def process_uploaded_qr_code(image):
+def process_qr_code(image):
     try:
         decoded_objects = decode(np.array(image))
         if decoded_objects:
@@ -63,10 +18,12 @@ def process_uploaded_qr_code(image):
                 data = json.loads(obj.data.decode('utf-8'))
                 st.success("QR Code detected!")
                 display_product_info(data)
-        else:
-            st.warning("No QR code found in the image")
+                return True
+        st.warning("No QR code found in the image")
+        return False
     except Exception as e:
         st.error(f"Error processing QR code: {str(e)}")
+        return False
 
 def display_product_info(data):
     st.write("### Product Information")
@@ -78,26 +35,18 @@ def display_product_info(data):
 def main():
     st.title("Carbon Footprint Scanner")
     
-    tab1, tab2 = st.tabs(["📸 Live Scanner", "📁 File Upload"])
+    tab1, tab2 = st.tabs(["📸 Take Picture", "📁 File Upload"])
     
     with tab1:
-        st.write("### Live QR Code Scanner")
+        st.write("### Take a Picture of the QR Code")
         
-        # Create placeholder for product info
-        info_placeholder = st.empty()
+        # Create a camera input widget
+        camera_image = st.camera_input("Take a picture of the QR code", key="camera")
         
-        # Initialize WebRTC streamer
-        ctx = webrtc_streamer(
-            key="qr-scanner",
-            video_processor_factory=QRCodeProcessor,
-            media_stream_constraints={"video": True, "audio": False},
-        )
-        
-        # Check for QR code data
-        if ctx.video_processor:
-            if ctx.video_processor.qr_data:
-                with info_placeholder.container():
-                    display_product_info(ctx.video_processor.qr_data)
+        if camera_image is not None:
+            # Process the image
+            image = Image.open(camera_image)
+            process_qr_code(image)
     
     with tab2:
         st.write("### File Upload")
@@ -106,12 +55,12 @@ def main():
         if uploaded_file is not None:
             image = Image.open(uploaded_file)
             st.image(image, caption='Uploaded Image', use_column_width=True)
-            process_uploaded_qr_code(image)
+            process_qr_code(image)
     
     st.markdown("""
     ### Instructions:
-    1. Choose either Live Scanner or File Upload tab
-    2. For Live Scanner: Allow camera access and point your camera at a QR code
+    1. Choose either Take Picture or File Upload tab
+    2. For Take Picture: Allow camera access and take a picture of a QR code
     3. For File Upload: Upload an image containing a QR code
     4. The app will automatically scan and display product information
     
