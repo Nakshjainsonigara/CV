@@ -3,6 +3,7 @@ from PIL import Image
 import numpy as np
 from pyzbar.pyzbar import decode
 import json
+from io import BytesIO
 
 st.set_page_config(
     page_title="Carbon Footprint Scanner",
@@ -30,18 +31,34 @@ def process_qr_code(image):
 def main():
     st.title("Carbon Footprint Scanner")
     
-    uploaded_file = st.file_uploader("Upload an image with QR code", type=['jpg', 'jpeg', 'png'])
+    # Add a tab selection for camera or file upload
+    tab1, tab2 = st.tabs(["📸 Camera", "📁 File Upload"])
     
-    if uploaded_file is not None:
-        image = Image.open(uploaded_file)
-        st.image(image, caption='Uploaded Image', use_column_width=True)
-        process_qr_code(image)
+    with tab1:
+        st.write("### Camera Scanner")
+        # Add camera input
+        camera_image = st.camera_input("Take a picture of a QR code")
+        
+        if camera_image is not None:
+            # Process the camera image
+            image = Image.open(camera_image)
+            process_qr_code(image)
+    
+    with tab2:
+        st.write("### File Upload")
+        uploaded_file = st.file_uploader("Upload an image with QR code", type=['jpg', 'jpeg', 'png'])
+        
+        if uploaded_file is not None:
+            image = Image.open(uploaded_file)
+            st.image(image, caption='Uploaded Image', use_column_width=True)
+            process_qr_code(image)
     
     st.markdown("""
     ### Instructions:
-    1. Upload an image containing a QR code
-    2. The app will automatically scan the QR code
-    3. Product information will appear below
+    1. Choose either Camera or File Upload tab
+    2. For Camera: Allow camera access and take a picture of a QR code
+    3. For File Upload: Upload an image containing a QR code
+    4. The app will automatically scan and display product information
     
     ### Sample QR Code Format:
     ```json
