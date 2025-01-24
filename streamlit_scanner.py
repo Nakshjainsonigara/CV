@@ -1,9 +1,8 @@
 import streamlit as st
-import cv2
-import qrcode
-import json
-from pyzbar.pyzbar import decode
+from PIL import Image
 import numpy as np
+from pyzbar.pyzbar import decode
+import json
 
 class QRScanner:
     def __init__(self):
@@ -28,83 +27,64 @@ class QRScanner:
             }
         }
 
-    def scan_qr(self, frame):
-        decoded_objects = decode(frame)
-        for obj in decoded_objects:
-            try:
-                data = json.loads(obj.data.decode('utf-8'))
-                points = obj.polygon
-                if len(points) == 4:
-                    for i in range(4):
-                        cv2.line(frame, 
-                               (points[i].x, points[i].y),
-                               (points[(i+1) % 4].x, points[(i+1) % 4].y),
-                               (0, 255, 0), 3)
-                return data
-            except Exception as e:
-                st.error(f"Error processing QR code: {e}")
-        return None
-
 def main():
     st.title("Carbon Footprint Scanner")
     
-    scanner = QRScanner()
+    # File uploader
+    uploaded_file = st.file_uploader("Upload an image with QR code", type=['jpg', 'jpeg', 'png'])
     
-    # Create a placeholder for the camera feed
-    camera_placeholder = st.empty()
-    info_placeholder = st.empty()
-    
-    # Add start/stop button
-    start_button = st.button("Start/Stop Camera")
-    
-    if 'camera_on' not in st.session_state:
-        st.session_state.camera_on = False
-    
-    if start_button:
-        st.session_state.camera_on = not st.session_state.camera_on
-    
-    if st.session_state.camera_on:
-        cap = cv2.VideoCapture(0)
+    if uploaded_file is not None:
+        # Display uploaded image
+        image = Image.open(uploaded_file)
+        st.image(image, caption='Uploaded Image', use_column_width=True)
         
+        # Convert to numpy array for QR scanning
+        image_np = np.array(image)
+        
+        # Scan for QR codes
         try:
-            while st.session_state.camera_on:
-                ret, frame = cap.read()
-                if not ret:
-                    st.error("Failed to access camera")
-                    break
-                
-                # Convert BGR to RGB
-                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                
-                # Scan for QR codes
-                product_data = scanner.scan_qr(rgb_frame)
-                
-                # Display the frame
-                camera_placeholder.image(rgb_frame, channels="RGB")
-                
-                # Display product information if found
-                if product_data:
-                    info_placeholder.markdown(f"""
-                    ### Product Information
-                    **Name:** {product_data['name']}
-                    **Carbon Footprint:** {product_data['co2_kg']} kg CO2
-                    **Tip:** {product_data['sustainability_tip']}
-                    """)
+            decoded_objects = decode(image_np)
+            
+            if decoded_objects:
+                for obj in decoded_objects:
+                    try:
+                        # Decode QR data
+                        data = json.loads(obj.data.decode('utf-8'))
+                        
+                        # Display results
+                        st.success("QR Code detected!")
+                        st.write("### Product Information")
+                        st.write(f"**Name:** {data.get('name', 'N/A')}")
+                        st.write(f"**Carbon Footprint:** {data.get('co2_kg', 'N/A')} kg CO2")
+                        st.write(f"**Category:** {data.get('category', 'N/A')}")
+                        st.write(f"**Tip:** {data.get('sustainability_tip', 'N/A')}")
+                        
+                    except json.JSONDecodeError:
+                        st.error("Invalid QR code format")
+                    except Exception as e:
+                        st.error(f"Error processing QR code: {str(e)}")
+            else:
+                st.warning("No QR code found in the image")
                 
         except Exception as e:
-            st.error(f"Error: {str(e)}")
-        finally:
-            cap.release()
-    else:
-        camera_placeholder.empty()
-        info_placeholder.empty()
+            st.error(f"Error scanning image: {str(e)}")
     
     # Instructions
     st.markdown("""
     ### Instructions:
-    1. Click 'Start/Stop Camera' to toggle the camera
-    2. Show a QR code to the camera
+    1. Upload an image containing a QR code
+    2. The app will automatically scan the QR code
     3. Product information will appear below
+    
+    ### Sample QR Code Format:
+    ```json
+    {
+        "name": "Product Name",
+        "co2_kg": 27.0,
+        "category": "Category",
+        "sustainability_tip": "Tip text"
+    }
+    ```
     """)
 
 if __name__ == "__main__":
