@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carbon Footprint Scanner</title>
+</head>
+<body>
+    <h1>🌱 Carbon Footprint Scanner</h1>
+
+    <div>
+        <video id="cameraFeed" autoplay></video>
+        <button id="captureButton">Capture Photo</button>
+    </div>
+    <pre id="result"></pre>
+
+    <script>
+        const video = document.getElementById("cameraFeed");
+        const captureButton = document.getElementById("captureButton");
+        const resultElement = document.getElementById("result");
+
+        // Access the camera
+        async function startCamera() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+    } catch (error) {
+        console.error("Error accessing camera:", error);
+        if (error.name === "NotAllowedError") {
+            alert("Please allow camera permissions in your browser settings.");
+        } else if (error.name === "NotFoundError") {
+            alert("No camera found. Please ensure your device has a camera.");
+        } else {
+            alert("Failed to access camera. Please try again.");
+        }
+    }
+}
+        // Capture a photo from the video feed
+        function capturePhoto() {
+            const canvas = document.createElement("canvas");
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext("2d");
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Log the canvas image for debugging
+            const img = new Image();
+            img.src = canvas.toDataURL("image/jpeg");
+            document.body.appendChild(img); // Display the captured image on the page
+
+            return canvas.toDataURL("image/jpeg").split(",")[1]; // Return base64 image
+        }
+
+        // Send the captured photo to the backend
+        async function analyzeImage(base64Image) {
+            try {
+                const response = await fetch("/analyze", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ image: base64Image })
+                });
+
+                if (!response.ok) {
+                    throw new Error("Failed to analyze image");
+                }
+
+                const data = await response.json();
+                resultElement.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultElement.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        // Event listener for the capture button
+        captureButton.addEventListener("click", () => {
+            const base64Image = capturePhoto();
+            console.log("Base64 image:", base64Image.slice(0, 50) + "..."); // Log first 50 chars
+            analyzeImage(base64Image);
+        });
+
+        // Start the camera when the page loads
+        startCamera();
+    </script>
+</body>
+</html>

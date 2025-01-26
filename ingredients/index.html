@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ingredient Scanner</title>
+</head>
+<body>
+    <input type="file" id="imageUpload" accept="image/*">
+    <div id="result"></div>
+
+    <script src="https://unpkg.com/tesseract.js@v3.0.3/dist/tesseract.min.js"></script>
+    <script>
+        const worker = Tesseract.createWorker();
+        (async () => {
+            await worker.load();
+            await worker.loadLanguage('eng');
+            await worker.initialize('eng');
+            
+            document.getElementById('imageUpload').addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                const { data: { text } } = await worker.recognize(file);
+                checkIngredients(text);
+            });
+        })();
+
+        // Match ingredients against the database
+        function checkIngredients(text) {
+            const harmful = JSON.parse('{{INGREDIENT_DATABASE}}'); // Replace with your JSON
+            const found = [];
+            Object.keys(harmful).forEach(ingredient => {
+                if (text.toLowerCase().includes(ingredient)) {
+                    found.push({ ingredient, ...harmful[ingredient] });
+                }
+            });
+            displayResults(found);
+        }
+
+        function displayResults(found) {
+            let html = "<h2>🚨 Harmful Ingredients Found:</h2>";
+            found.forEach(item => {
+                html += `<p><strong>${item.ingredient}</strong>: ${item.impact}. Swap with: ${item.alternatives}</p>`;
+            });
+            document.getElementById("result").innerHTML = html;
+        }
+    </script>
+</body>
+</html>

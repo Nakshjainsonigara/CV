@@ -1,0 +1,14 @@
+{
+  "palm oil": {
+    "impact": "Deforestation, orangutan habitat loss",
+    "alternatives": "Coconut oil, sunflower oil"
+  },
+  "microplastics": {
+    "impact": "Ocean pollution, harms marine life",
+    "alternatives": "Jojoba beads, oatmeal"
+  },
+  "parabens": {
+    "impact": "Toxic to aquatic ecosystems",
+    "alternatives": "Potassium sorbate, vitamin E"
+  }
+}
