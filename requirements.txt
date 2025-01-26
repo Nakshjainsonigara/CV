@@ -8,3 +8,4 @@ openai
 Pillow
 cryptography
 av
+dotenv
