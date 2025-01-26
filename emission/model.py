@@ -8,7 +8,7 @@ from PIL import Image
 import av
 
 # Configuration
-token = "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"
+token = os.getenv("ENCRYPTION_KEY")
 endpoint = "https://models.inference.ai.azure.com"
 model_name = "gpt-4o"
 
