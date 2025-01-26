@@ -6,9 +6,10 @@ from openai import OpenAI
 from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
 from PIL import Image
 import av
-
+from dotenv import load_dotenv
+load_dotenv()
 # Configuration
-token = os.getenv("ENCRYPTION_KEY")
+token = os.getenv("token")
 endpoint = "https://models.inference.ai.azure.com"
 model_name = "gpt-4o"
 
